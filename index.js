@@ -93,5 +93,5 @@ module.exports = async ({ req, res, log, error }) => {
         }
     });
 
-  return context.res.empty();
+    return res.send({ success: true });
 }
