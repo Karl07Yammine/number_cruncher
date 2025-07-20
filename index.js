@@ -70,12 +70,27 @@ module.exports = async ({ req, res, log, error }) => {
                 ]
             }
 
-            fetch("https://hooks.slack.com/services/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", {
+            fetch(process.env.SLACK_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(payload)
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error(`Slack error: ${res.status}`);
+                    return res.text();
+                })
+                .then(data => console.log("Message sent:", data))
+                .catch(err => console.error("Error:", err));
+
+        } else {
+            fetch(process.env.SLACK_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: {text: 'No overdue bookings'}
             })
                 .then(res => {
                     if (!res.ok) throw new Error(`Slack error: ${res.status}`);
