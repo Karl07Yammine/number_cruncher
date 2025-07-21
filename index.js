@@ -28,6 +28,21 @@ module.exports = async ({ req, res, log, error }) => {
     const docs = await databases.listDocuments(db, bookings_collection, [
         Query.equal("selectedDate", formatted)
     ]);
+    if (!docs) {
+        fetch(process.env.SLACK_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: {text: 'No bookings for today'}
+        })
+        .then(res => {
+            if (!res.ok) throw new Error(`Slack error: ${res.status}`);
+            return res.text();
+        })
+        .then(data => console.log("Message sent:", data))
+        .catch(err => console.error("Error:", err));
+    }
 
     docs.documents.forEach(doc => {
         if (currentMinutes >= times[doc.selectedTime]) {
