@@ -17,7 +17,7 @@ module.exports = async ({ req, res, log, error }) => {
     const day = String(today.getDate()).padStart(2, '0');
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const year = today.getFullYear();
-    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+    const currentMinutes = today.getHours() * 60 + today.getMinutes() + 180;
     const formatted = `${day}/${month}/${year}`;
 
     console.log(formatted);
