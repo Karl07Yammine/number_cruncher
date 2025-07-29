@@ -1,17 +1,17 @@
 // index.js
-const { Client, Databases, Query } = require("node-appwrite");
+const { Client, Databases, Query, ID } = require("node-appwrite");
 const dotenv = require("dotenv");
 dotenv.config();
 
 module.exports = async ({ req, res, log, error }) => {
     const client = new Client()
-        .setEndpoint(process.env.APPWRITE_ENDPOINT)
-        .setProject(process.env.APPWRITE_PROJECT)
-        .setKey(process.env.APPWRITE_API_KEY);
+        .setKey(process.env.APPWRITE_API_KEY)
 
     const databases = new Databases(client);
     const db = process.env.APPWRITE_DB;
     const bookings_collection = process.env.APPWRITE_BOOKINGS_COLLECTION;
+    const receipt_collection = process.env.APPWRITE_RECEIPT_COLLECTION;
+    const monthly_collection = process.env.APPWRITE_MONTHLY_COLLECTION
     const today = new Date();
 
     const day = String(today.getDate()).padStart(2, '0');
@@ -19,109 +19,49 @@ module.exports = async ({ req, res, log, error }) => {
     const year = today.getFullYear();
     const currentMinutes = today.getHours() * 60 + today.getMinutes() + 180;
     const formatted = `${day}/${month}/${year}`;
+    let booking_id
 
-    console.log(formatted);
+    const { receipt_id, status } = JSON.parse(req.body ?? '{}');
+    log(`Received delete request for userId: ${receipt_id}`);
 
-    const times = [540, 660, 780, 900, 1020]
-    const convertedTimes = ['10:00am till 12:00pm', '12:00pm till 2:00pm', '2:00pm till 4:00pm', '4:00pm till 6:00pm', '6:00pm till 8:00pm']
 
-    const docs = await databases.listDocuments(db, bookings_collection, [
-        Query.equal("selectedDate", formatted)
-    ]);
-    if (!docs) {
-        fetch(process.env.SLACK_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: {text: 'No bookings for today'}
-        })
-        .then(res => {
-            if (!res.ok) throw new Error(`Slack error: ${res.status}`);
-            return res.text();
-        })
-        .then(data => console.log("Message sent:", data))
-        .catch(err => console.error("Error:", err));
+    if (status == 'paid') {
+        try {
+            (async () => {
+                await databases.updateDocument(db, receipt_collection, receipt_id, {status: 'paid', date_paid: formatted})
+                let receipt = await databases.getDocument(db, receipt_collection, receipt_id);
+                booking_id = receipt.booking_id;
+                await databases.updateDocument(db, bookings_collection, booking_id, {status: 'completed_paid'})
+
+                
+            })()
+        } catch (error) {
+            console.log(error)
+        }
+    } else if (status == 'unpaid') {
+        try {
+            (async () => {
+                let receipt = await databases.getDocument(db, receipt_collection, receipt_id);
+                const monthlyData = await databases.listDocuments(db, monthly_collection, [Query.equal('date', receipt.month_key)])
+                if (!monthlyData) {
+                    await databases.createDocument(db, monthly_collection, ID.unique(), {date: receipt.month_key, unpaid: receipt.total, paid: 0})
+                } else if (monthlyData) {
+                    await databases.updateDocument(db, monthly_collection, monthlyData.documents[0].$id, {unpaid: monthlyData.documents[0].unpaid + receipt_total})
+                }
+            })()
+        } catch (error) {
+            console.log(error)
+        }
+        
+
     }
 
-    docs.documents.forEach(doc => {
-        if (currentMinutes >= times[doc.selectedTime]) {
-            let booking_id = doc.$id;
-            let payload = {
-                "text": "*📅 Unassigned Bookings*",
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "*📅 Booking Alert*"
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "fields": [
-                            {
-                                "type": "mrkdwn",
-                                "text": `*🔖 Booking ID:*\n${booking_id}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*👤 Booker Name:*\n${doc.user_name}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*📆 Date:*\n${formatted}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*⏰ Time:*\n${convertedTimes[doc.selectedTime]}`
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": `*📞 Phone:*\n${doc.phone_number}`
-                            }
-                        ]
-                    }
-                ]
-            }
+    
 
-            fetch(process.env.SLACK_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            })
-                .then(res => {
-                    if (!res.ok) throw new Error(`Slack error: ${res.status}`);
-                    return res.text();
-                })
-                .then(data => console.log("Message sent:", data))
-                .catch(err => console.error("Error:", err));
 
-        } else {
-            fetch(process.env.SLACK_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: {text: 'No overdue bookings'}
-            })
-                .then(res => {
-                    if (!res.ok) throw new Error(`Slack error: ${res.status}`);
-                    return res.text();
-                })
-                .then(data => console.log("Message sent:", data))
-                .catch(err => console.error("Error:", err));
+    
 
-        }
-        if (currentMinutes >= (times[doc.selectedTime] + 60)) {
-            let booking_id = doc.$id;
-            databases.updateDocument(db, bookings_collection, booking_id, {
-                status: "overdue"
-            })
-        }
-    });
+
 
     return res.send({ success: true });
 }
