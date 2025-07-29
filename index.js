@@ -63,5 +63,5 @@ module.exports = async ({ req, res, log, error }) => {
 
 
 
-    return res.send({ success: true });
+    return res.json({ success: true });
 }
