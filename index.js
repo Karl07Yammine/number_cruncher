@@ -39,7 +39,9 @@ module.exports = async ({ req, res, log, error }) => {
                 Query.equal('date', receipt.month_key)
             ]);
             let unpaid = monthlyData.documents[0].unpaid - receipt.total;
-            await databases.updateDocument(db, monthly_collection, monthlyData.documents[0].$id, {unpaid})
+            log('unpaid is now: ' + unpaid)
+            await databases.updateDocument(db, monthly_collection, monthlyData.documents[0].$id, {unpaid});
+            log('monthly data shoudl be updated')
 
             const newMonthlyData = await databases.listDocuments(db, monthly_collection, [Query.equal(date, formatted.split(-7))])
             log(newMonthlyData)
