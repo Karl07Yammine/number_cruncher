@@ -4,8 +4,6 @@ dotenv.config();
 
 module.exports = async ({ req, res, log, error }) => {
     const client = new Client()
-        .setEndpoint(process.env.APPWRITE_ENDPOINT)
-        .setProject(process.env.APPWRITE_PROJECT)
         .setKey(process.env.APPWRITE_API_KEY);
 
     const databases = new Databases(client);
@@ -25,11 +23,11 @@ module.exports = async ({ req, res, log, error }) => {
 
     try {
         if (status === 'paid') {
+            log('started payment process')
             await databases.updateDocument(db, receipt_collection, receipt_id, {
                 status: 'paid',
                 date_paid: formatted
             });
-
             const receipt = await databases.getDocument(db, receipt_collection, receipt_id);
             const booking_id = receipt.booking_id;
 
@@ -44,6 +42,7 @@ module.exports = async ({ req, res, log, error }) => {
             await databases.updateDocument(db, monthly_collection, monthlyData.documents[0].$id, {unpaid})
 
             const newMonthlyData = await databases.listDocuments(db, monthly_collection, [Query.equal(date, formatted.split(-7))])
+            log(newMonthlyData)
             if (!newMonthlyData || newMonthlyData.total === 0) {
                 await databases.createDocument(db, monthly_collection, ID.unique(), {
                     date: formatted.split(-7),
@@ -51,6 +50,7 @@ module.exports = async ({ req, res, log, error }) => {
                     unpaid: 0
                 });
             } else {
+                log('trying existing monthly data to add paid info')
                 const existing = newMonthlyData.documents[0];
                 await databases.updateDocument(db, monthly_collection, existing.$id, {
                     paid: existing.paid + receipt_total
