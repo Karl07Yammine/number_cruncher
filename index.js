@@ -49,11 +49,12 @@ module.exports = async ({ req, res, log, error }) => {
                     paid: receipt_total,
                     unpaid: 0
                 });
+                log('created new monhtly document')
             } else {
                 const existing = newMonthlyData.documents[0];
-                await databases.updateDocument(db, monthly_collection, existing.$id, {
-                    paid: existing.paid + receipt_total
-                });
+                const paid = existing.paid + receipt_total
+                await databases.updateDocument(db, monthly_collection, existing.$id, { paid });
+                log('updated existing monthly document')
             }
 
         } else if (status === 'unpaid') {
