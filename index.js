@@ -43,6 +43,9 @@ module.exports = async ({ req, res, log, error }) => {
             await databases.updateDocument(db, monthly_collection, monthlyData.documents[0].$id, { unpaid });
 
             const newMonthlyData = await databases.listDocuments(db, monthly_collection, [Query.equal('date', formatted.split(-7))])
+            log('new monhtly data: ' + newMonthlyData)
+            log('receipt total: ' + receipt_total)
+            log('date: ' + formatted.split(-7) + " and type is: " + typeof(formatted.split(-7)))
             if (!newMonthlyData || newMonthlyData.total === 0) {
                 await databases.createDocument(db, monthly_collection, ID.unique(), {
                     date: formatted.split(-7),
