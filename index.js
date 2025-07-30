@@ -4,6 +4,8 @@ dotenv.config();
 
 module.exports = async ({ req, res, log, error }) => {
     const client = new Client()
+        .setEndpoint(process.env.APPWRITE_ENDPOINT)
+        .setProject(process.env.APPWRITE_PROJECT)
         .setKey(process.env.APPWRITE_API_KEY);
 
     const databases = new Databases(client);
@@ -37,7 +39,7 @@ module.exports = async ({ req, res, log, error }) => {
                 Query.equal('date', receipt.month_key)
             ]);
             let unpaid = monthlyData.documents[0].unpaid - receipt.total;
-            await databases.updateDocument(db, monthly_collection, monthlyData.documents[0].$id, {unpaid});
+            await databases.updateDocument(db, monthly_collection, monthlyData.documents[0].$id, { unpaid });
 
             const newMonthlyData = await databases.listDocuments(db, monthly_collection, [Query.equal(date, formatted.split(-7))])
             if (!newMonthlyData || newMonthlyData.total === 0) {
