@@ -30,6 +30,7 @@ module.exports = async ({ req, res, log, error }) => {
             });
             const receipt = await databases.getDocument(db, receipt_collection, receipt_id);
             const booking_id = receipt.booking_id;
+            const receipt_total = receipt.total
 
             await databases.updateDocument(db, bookings_collection, booking_id, {
                 status: 'completed_paid'
